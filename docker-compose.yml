@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  mongo_db:
+    image: mongo
+    container_name: mongo_container_two
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - backend
+
+  service-reg:
+    build:
+      context: ./service-reg
+    container_name: service_registry
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=service-reg-docker
+    networks:
+      - backend
+
+  config-server:
+    build:
+      context: ./config-server
+    container_name: config_server
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - service-reg
+    networks:
+      - backend
+
+  gateway:
+    build:
+      context: ./gateway
+    container_name: gateway_container
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=gateway-docker
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8085
+    depends_on:
+      - config-server
+      - service-reg
+    networks:
+      - backend
+
+  userms:
+    build:
+      context: ./userms
+    container_name: userms_container
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=userms-docker
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8085
+    depends_on:
+      - config-server
+      - mongo_db
+      - service-reg
+    networks:
+      - backend
+
+  trainms:
+    build:
+      context: ./trainms
+    container_name: trainms_container
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=trainms-docker
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8085
+    depends_on:
+      - config-server
+      - mongo_db
+      - service-reg
+    networks:
+      - backend
+
+  ticketms:
+    build:
+      context: ./ticketms
+    container_name: ticketms_container
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=ticketms-docker
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8085
+    depends_on:
+      - config-server
+      - mongo_db
+      - service-reg
+    networks:
+      - backend
+
+volumes:
+  mongo_data:
+
+networks:
+  backend:
+    driver: bridge
